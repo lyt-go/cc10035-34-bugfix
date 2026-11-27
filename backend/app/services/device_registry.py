@@ -99,37 +99,39 @@ class DeviceRegistryService(BaseModuleService):
     def match_protocol(self, device_type: str) -> list[dict[str, Any]]:
         """根据设备类型匹配可用的协议配置。
 
-        从协议配置模块查找与该设备类型兼容的已生效协议。
+        只返回当前实际生效（未废弃）的协议；同一协议族仅暴露唯一生效版本，
+        注册页据此准确定位生效项，不会命中已废弃条目。
         """
         protocol_rows = store.rows("protocol_cfg")
         matched = []
+        fallback = []
+        seen_families: set[str] = set()
 
         for proto in protocol_rows:
             if proto.get("status") != "已生效":
                 continue
-            proto_name = proto.get("协议名称", "")
-            proto_transport = proto.get("传输方式", "")
+            config_id = str(proto.get("配置编号", ""))
+            # 与 protocol_lifecycle 保持同一套血缘拆分，避免循环导入则内联解析。
+            root_id = config_id.rsplit("-v", 1)[0] if "-v" in config_id else config_id
+            if root_id in seen_families:
+                continue
+            seen_families.add(root_id)
 
-            # 简单匹配：协议名称或传输方式包含设备类型关键词
+            payload = {
+                "配置编号": proto.get("配置编号"),
+                "协议名称": proto.get("协议名称", ""),
+                "传输方式": proto.get("传输方式", ""),
+                "数据格式": proto.get("数据格式"),
+                "心跳间隔": proto.get("心跳间隔"),
+            }
+            proto_name = str(payload["协议名称"])
+            proto_transport = str(payload["传输方式"])
             if device_type.lower() in proto_name.lower() or device_type.lower() in proto_transport.lower():
-                matched.append({
-                    "配置编号": proto.get("配置编号"),
-                    "协议名称": proto_name,
-                    "传输方式": proto_transport,
-                    "数据格式": proto.get("数据格式"),
-                    "心跳间隔": proto.get("心跳间隔"),
-                })
-            elif len(matched) == 0:
-                # 全部返回所有已生效协议
-                matched.append({
-                    "配置编号": proto.get("配置编号"),
-                    "协议名称": proto_name,
-                    "传输方式": proto_transport,
-                    "数据格式": proto.get("数据格式"),
-                    "心跳间隔": proto.get("心跳间隔"),
-                })
+                matched.append(payload)
+            else:
+                fallback.append(payload)
 
-        return matched[:5]
+        return (matched or fallback)[:5]
 
     def status_summary(self) -> dict[str, Any]:
         """设备状态统计摘要：在线/离线/待激活/已注销比例。"""

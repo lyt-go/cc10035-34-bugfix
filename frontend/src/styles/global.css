@@ -70,3 +70,23 @@ body { margin: 0; background: #f6f8fb; color: #1f2937; }
 .analysis-chart { display: flex; align-items: flex-end; gap: 8px; height: 160px; padding: 12px 0; }
 .analysis-bar { flex: 1; border-radius: 4px 4px 0 0; background: var(--brand); min-width: 24px; position: relative; transition: height 0.4s; }
 .analysis-bar span { position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%); font-size: 10px; color: var(--muted); white-space: nowrap; }
+
+/* 协议升版与设备绑定生命周期面板 */
+.lifecycle-panel { background: #f8fafc; border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 18px; }
+.lifecycle-panel .panel-head h3 { margin: 0 0 4px; }
+.lifecycle-panel .panel-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin: 12px 0; }
+.lifecycle-panel .panel-card { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+.lifecycle-panel .panel-card h4 { margin: 0 0 10px; }
+.lifecycle-panel .create-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+.lifecycle-panel .create-field input { padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; color: #111827; }
+.lifecycle-panel .panel-title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.lifecycle-panel .hint { font-size: 12px; color: var(--muted); }
+.lifecycle-panel .family-table { margin-top: 10px; }
+.lifecycle-panel .radio-cell { display: inline-flex; align-items: center; gap: 6px; color: #111827; }
+.lifecycle-panel .tag { font-style: normal; font-size: 11px; border-radius: 999px; padding: 1px 8px; }
+.lifecycle-panel .tag.active { background: #dcfce7; color: #15803d; }
+.lifecycle-panel .tag.pending { background: #fef9c3; color: #a16207; }
+.lifecycle-panel .tag.deprecated { background: #fee2e2; color: #b91c1c; }
+.lifecycle-panel .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; margin: 0; }
+.lifecycle-panel .detail-grid dt { font-size: 12px; color: var(--muted); }
+.lifecycle-panel .detail-grid dd { margin: 2px 0 0; font-size: 14px; font-weight: 600; }

@@ -33,61 +33,14 @@ class CrossModuleService:
     def register_device_with_protocol(
         self, device_id: str, device_type: str, protocol_id: str
     ) -> dict[str, Any]:
-        """设备注册时自动绑定协议配置，校验协议是否存在且已生效。
+        """设备注册时自动绑定协议配置（委托协议生命周期服务）。
 
-        业务流程：
-        1. 查找协议配置是否存在且状态为「已生效」
-        2. 查找设备是否已注册（防重复）
-        3. 创建设备注册记录，字段中记录关联的协议类型
-        4. 将设备状态设为「待激活」
+        生命周期服务保证：只认实际生效配置、升版冲突时保留待激活申请、
+        绝不冒用已废弃条目；本方法保留原跨模块入口与返回结构。
         """
-        device_rows = store.rows("device_registry")
-        protocol_rows = store.rows("protocol_cfg")
+        from app.services.protocol_lifecycle import lifecycle_service
 
-        # 步骤1：校验协议配置
-        protocol = None
-        for row in protocol_rows:
-            if row.get("配置编号") == protocol_id:
-                protocol = row
-                break
-        if protocol is None:
-            return {"ok": False, "message": f"协议配置 {protocol_id} 不存在"}
-        if protocol.get("status") != "已生效":
-            return {
-                "ok": False,
-                "message": f"协议配置 {protocol_id} 未生效，当前状态：{protocol.get('status')}",
-            }
-
-        # 步骤2：防重复注册
-        for row in device_rows:
-            if row.get("设备编号") == device_id:
-                return {
-                    "ok": False,
-                    "message": f"设备 {device_id} 已注册，当前状态：{row.get('status')}",
-                }
-
-        # 步骤3：创建设备注册记录
-        max_id = max((int(row.get("id", 0)) for row in device_rows), default=0)
-        entry = {
-            "id": max_id + 1,
-            "设备编号": device_id,
-            "设备类型": device_type,
-            "协议类型": protocol.get("协议名称", ""),
-            "认证方式": protocol.get("传输方式", ""),
-            "所属网关": "",
-            "固件版本": "v1.0.0",
-            "注册时间": _now(),
-            "最后在线": _now(),
-            "status": "待激活",
-            "pending": True,
-            "abnormal": False,
-        }
-        device_rows.append(entry)
-        return {
-            "ok": True,
-            "message": f"设备 {device_id} 已注册，绑定协议 {protocol_id}",
-            "entry": entry,
-        }
+        return lifecycle_service.bind_device(device_id, device_type, protocol_id)
 
     def query_device_protocol_status(self, device_id: str | None = None) -> list[dict[str, Any]]:
         """查询设备与其绑定协议的状态概览。
@@ -107,16 +60,25 @@ class CrossModuleService:
         for dev in filtered:
             matched_protocol = None
             dev_protocol = dev.get("协议类型", "")
-            for proto in protocol_rows:
-                if proto.get("协议名称") == dev_protocol:
-                    matched_protocol = proto.get("status")
-                    break
+            # 优先按设备实际绑定的配置编号精确定位，避免同名废弃/待验证条目误判。
+            bound_id = dev.get("绑定协议编号")
+            if bound_id:
+                for proto in protocol_rows:
+                    if proto.get("配置编号") == bound_id:
+                        matched_protocol = proto.get("status")
+                        break
+            if matched_protocol is None:
+                for proto in protocol_rows:
+                    if proto.get("协议名称") == dev_protocol and proto.get("status") == "已生效":
+                        matched_protocol = proto.get("status")
+                        break
 
             result.append({
                 "设备编号": dev.get("设备编号"),
                 "设备类型": dev.get("设备类型"),
                 "设备状态": dev.get("status"),
                 "协议类型": dev_protocol,
+                "绑定协议编号": bound_id or "",
                 "协议状态": matched_protocol or "未找到",
                 "注册时间": dev.get("注册时间"),
                 "最后在线": dev.get("最后在线"),

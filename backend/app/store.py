@@ -8,15 +8,25 @@ from typing import Any
 
 from app.seed import SEED_ROWS
 
+# 协议升版/设备绑定生命周期的辅助表：不参与18个业务模块的概览统计。
+AUX_TABLES = (
+    "maintainer_credential",
+    "upgrade_ticket",
+    "upgrade_confirm",
+    "device_binding",
+)
+
 
 class Store:
     def __init__(self) -> None:
         self._tables: dict[str, list[dict[str, Any]]] = {
             name: [dict(row) for row in rows] for name, rows in SEED_ROWS.items()
         }
+        for name in AUX_TABLES:
+            self._tables.setdefault(name, [])
 
     def module_names(self) -> list[str]:
-        return sorted(self._tables)
+        return sorted(name for name in self._tables if name not in AUX_TABLES)
 
     def rows(self, module: str) -> list[dict[str, Any]]:
         return self._tables.setdefault(module, [])

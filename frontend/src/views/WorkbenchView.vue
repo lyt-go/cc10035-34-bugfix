@@ -15,6 +15,9 @@
       </div>
     </header>
 
+    <ProtocolUpgradePanel v-if="moduleKey === 'protocol_cfg'" />
+    <DeviceBindingPanel v-else-if="moduleKey === 'device_registry'" />
+
     <div class="stat-row">
       <article v-for="item in stats" :key="item.label" class="stat-card">
         <span class="stat-label">{{ item.label }}</span>
@@ -104,6 +107,8 @@ import {
   runAction as applyAction,
 } from '@/api/backend-service'
 import type { EntryRow } from '@/data/types'
+import ProtocolUpgradePanel from '@/views/protocol/ProtocolUpgradePanel.vue'
+import DeviceBindingPanel from '@/views/protocol/DeviceBindingPanel.vue'
 
 const props = defineProps<{ moduleKey: string }>()
 const meta = moduleMeta(props.moduleKey)
